@@ -24,6 +24,20 @@
 npm install
 ```
 
+Tao file moi truong tu mau:
+
+```bash
+cp .env.example .env
+```
+
+Neu can goi API o domain rieng (khong dung `/api` cung domain app), dat gia tri:
+
+```env
+VITE_API_BASE_URL=https://api-domain-cua-ban.com
+```
+
+De trong (mac dinh) thi frontend se goi API noi bo `/api/...`.
+
 ## Chay du an (development)
 
 Chay ca frontend va backend cung luc:

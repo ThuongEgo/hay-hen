@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
 const MENU = [
   { key: "5-35", label: "Vietlott 5/35" },
   { key: "6-45", label: "Vietlott 6/46 (Mega 6/45)" },
@@ -503,10 +505,10 @@ function App() {
         setError("");
 
         const [res535, res645, res655, resJackpot] = await Promise.all([
-          fetch("/api/vietlott/5-35"),
-          fetch("/api/vietlott/6-45"),
-          fetch("/api/vietlott/6-55"),
-          fetch("/api/vietlott/jackpot-winners"),
+          fetch(`${API_BASE_URL}/api/vietlott/5-35`),
+          fetch(`${API_BASE_URL}/api/vietlott/6-45`),
+          fetch(`${API_BASE_URL}/api/vietlott/6-55`),
+          fetch(`${API_BASE_URL}/api/vietlott/jackpot-winners`),
         ]);
 
         if (!res535.ok || !res645.ok || !res655.ok || !resJackpot.ok) {
