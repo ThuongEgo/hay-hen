@@ -277,11 +277,11 @@ async function fetchGameData(gameKey) {
   return data;
 }
 
-app.get("/api/health", (_, res) => {
+app.get(`${BASE_URL}/api/health`, (_, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/vietlott/jackpot-winners", async (_, res) => {
+app.get(`${BASE_URL}/api/vietlott/jackpot-winners`, async (_, res) => {
   try {
     const [game535, game645, game655] = await Promise.all([
       fetchGameData("5-35"),
@@ -311,7 +311,7 @@ app.get("/api/vietlott/jackpot-winners", async (_, res) => {
   }
 });
 
-app.get("/api/vietlott/:game", async (req, res) => {
+app.get(`${BASE_URL}/api/vietlott/:game`, async (req, res) => {
   try {
     const data = await fetchGameData(req.params.game);
     res.json(data);
