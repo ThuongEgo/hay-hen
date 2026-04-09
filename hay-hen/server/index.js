@@ -5,7 +5,7 @@ import * as cheerio from "cheerio";
 
 const app = express();
 const PORT = 4000;
-const BASE_URL = "https://vietlott.vn";
+const BASE_URL = "https://www.vietlott.vn";
 
 app.use(cors());
 
@@ -35,7 +35,14 @@ const GAME_CONFIG = {
 
 const http = axios.create({
   baseURL: BASE_URL,
-  headers: { "User-Agent": "Mozilla/5.0" },
+  headers: {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    Accept: "application/json, text/plain, */*",
+    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+    Referer: `${BASE_URL}/`,
+    Origin: BASE_URL,
+  },
   timeout: 15000,
 });
 
