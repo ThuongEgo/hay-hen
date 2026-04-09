@@ -95,7 +95,7 @@ function parseAjaxConfig(html) {
 async function createRenderInfo() {
   const envUrl = "/ajaxpro/Vietlott.Utility.WebEnvironments,Vietlott.Utility.ashx";
   const response = await http.post(
-    envUrl,
+    `${BASE_URL}${envUrl}`,
     { SiteId: "main.frontend.vi" },
     { headers: { "X-AjaxPro-Method": "ServerSideFrontEndCreateRenderInfo" } }
   );
@@ -121,7 +121,7 @@ async function fetchListRowsByAjax(ajaxConfig) {
       PageIndex: pageIndex,
     };
 
-    const response = await http.post(ajaxConfig.endpoint, payload, {
+    const response = await http.post(`${BASE_URL}${ajaxConfig.endpoint}`, payload, {
       headers: { "X-AjaxPro-Method": "ServerSideDrawResult" },
     });
 
@@ -214,7 +214,7 @@ async function fetchGameData(gameKey) {
   const game = GAME_CONFIG[gameKey];
   if (!game) throw new Error("Game không hợp lệ.");
 
-  const mainPage = await http.get(game.pagePath);
+  const mainPage = await http.get(`${BASE_URL}${game.pagePath}`);
   const html = mainPage.data;
   const ajaxConfig = parseAjaxConfig(html);
   const optionList = parseDrawOptions(html);
@@ -234,7 +234,9 @@ async function fetchGameData(gameKey) {
     let jackpotWinners = [];
 
     try {
-      const detailPage = await http.get(`${game.detailPath}?id=${drawCode}&nocatche=1`);
+      const detailPage = await http.get(
+        `${BASE_URL}${game.detailPath}?id=${drawCode}&nocatche=1`
+      );
       const detail = parseDetailPage(detailPage.data);
       if (detail.numbers.length >= game.pickCount) {
         numbers = detail.numbers;
@@ -260,6 +262,7 @@ async function fetchGameData(gameKey) {
 
   const data = {
     game: gameKey,
+    sourceBaseUrl: BASE_URL,
     fetchedAt: new Date().toISOString(),
     latest: cleanDraws[0] ?? null,
     draws: cleanDraws,
@@ -295,6 +298,7 @@ app.get("/api/vietlott/jackpot-winners", async (_, res) => {
       .sort((a, b) => Number(b.drawCode) - Number(a.drawCode));
 
     res.json({
+      sourceBaseUrl: BASE_URL,
       fetchedAt: new Date().toISOString(),
       total: jackpotDraws.length,
       draws: jackpotDraws,
