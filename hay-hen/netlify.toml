@@ -3,8 +3,23 @@
   publish = "dist"
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api"
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200
+
+[[redirects]]
+  from = "/api/vietlott/6-45"
+  to = "/.netlify/functions/vietlott/6-45"
+  status = 200
+
+[[redirects]]
+  from = "/api/vietlott/6-55"
+  to = "/.netlify/functions/vietlott/6-55"
+  status = 200
+
+[[redirects]]
+  from = "/api/vietlott/jackpot-winners"
+  to = "/.netlify/functions/jackpot-winners"
   status = 200
 
 [[redirects]]
