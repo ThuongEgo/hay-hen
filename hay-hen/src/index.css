@@ -154,6 +154,17 @@ body {
   gap: 12px;
 }
 
+.suggestion-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 24px 12px;
+  color: #6b7280;
+  font-size: 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px dashed #d1d5db;
+}
+
 .suggestion-box {
   border: 1px solid #e5e7eb;
   border-radius: 10px;

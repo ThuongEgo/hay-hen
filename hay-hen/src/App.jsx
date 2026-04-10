@@ -129,6 +129,10 @@ function Suggestions({ suggestions, gameType }) {
     window.location.href = smsLink;
   }
 
+  const allKeysEmpty = ["10", "20", "50"].every(
+    (key) => !(suggestions?.[key]?.numbers?.length > 0)
+  );
+
   return (
     <section className="card">
       <h2>Bộ số gợi ý theo tần suất</h2>
@@ -160,15 +164,24 @@ function Suggestions({ suggestions, gameType }) {
                 Mua ngay (Viettel money)
               </button>
             </div>
-            {hasNumbers && (
+            {hasNumbers ? (
               <div className="suggestion-syntax">
                 <p><b>Vietlott:</b> {vietlottSmsSyntax}</p>
                 <p><b>Viettel Money:</b> {viettelMoneySmsSyntax}</p>
+              </div>
+            ) : (
+              <div className="suggestion-syntax">
+                <p style={{ color: "#9ca3af", fontSize: "12px" }}>Không có dữ liệu</p>
               </div>
             )}
           </div>
           );
         })}
+        {allKeysEmpty && (
+          <div className="suggestion-empty">
+            Chưa có dữ liệu gợi ý. Vui lòng thử lại sau.
+          </div>
+        )}
       </div>
       {buyStatus && <p className="buy-now-status">{buyStatus}</p>}
     </section>
