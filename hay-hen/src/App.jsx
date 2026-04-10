@@ -115,8 +115,8 @@ function Suggestions({ suggestions, gameType }) {
     const normalizedNumbers = numbers.map(formatNum).join(" ");
     const isVietlott = channel === "vietlott";
     const syntax = isVietlott
-      ? `${gameSmsCode} K1 ${normalizedNumbers}`
-      : `VTM ${gameSmsCode} K1 ${normalizedNumbers}`;
+      ? `${gameSmsCode} K1 S ${normalizedNumbers}`
+      : `VTM ${gameSmsCode} K1 S ${normalizedNumbers}`;
     const copied = await copyToClipboard(syntax);
     const smsLink = `sms:9969?&body=${encodeURIComponent(syntax)}`;
 
@@ -141,8 +141,8 @@ function Suggestions({ suggestions, gameType }) {
           const numbers = suggestions?.[key]?.numbers ?? [];
           const hasNumbers = numbers.length > 0;
           const normalizedNumbers = numbers.map(formatNum).join(" ");
-          const vietlottSmsSyntax = `${gameSmsCode} K1 ${normalizedNumbers}`;
-          const viettelMoneySmsSyntax = `VTM ${gameSmsCode} K1 ${normalizedNumbers}`;
+          const vietlottSmsSyntax = `${gameSmsCode} K1 S ${normalizedNumbers}`;
+          const viettelMoneySmsSyntax = `VTM ${gameSmsCode} K1 S ${normalizedNumbers}`;
 
           return (
           <div key={key} className="suggestion-box">
@@ -370,8 +370,8 @@ function CustomCageDraw() {
   };
   const gameSmsCode = gameSmsCodeMap[gameType] ?? "645";
   const selectedNumbers = formattedNumbers.join(" ");
-  const vietlottSmsSyntax = `${gameSmsCode} K1 ${selectedNumbers}`;
-  const viettelMoneySmsSyntax = `VTM ${gameSmsCode} K1 ${selectedNumbers}`;
+  const vietlottSmsSyntax = `${gameSmsCode} K1 S ${selectedNumbers}`;
+  const viettelMoneySmsSyntax = `VTM ${gameSmsCode} K1 S ${selectedNumbers}`;
 
   async function copyToClipboard(text) {
     if (typeof navigator === "undefined" || !navigator.clipboard) {
