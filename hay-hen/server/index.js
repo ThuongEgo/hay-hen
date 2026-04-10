@@ -7,7 +7,26 @@ const app = express();
 const PORT = 4000;
 const BASE_URL = "https://www.vietlott.vn";
 
-app.use(cors());
+const allowedOrigins = [
+  "https://atrungroi.netlify.app",
+  "http://localhost:4000",
+  "http://localhost:3000",
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 const cache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000;

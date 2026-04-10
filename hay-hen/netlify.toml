@@ -3,11 +3,10 @@
   publish = "dist"
 
 [[redirects]]
-  from = "/api/*"
-  to = "http://viettlot.vn:splat"
-  status = 200
-
-[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
