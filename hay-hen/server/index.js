@@ -8,7 +8,7 @@ const PORT = 4000;
 const BASE_URL = "https://www.vietlott.vn";
 
 const allowedOrigins = [
-  "https://atrungroi.netlify.app",
+  "https://www.vietlott.vn",
   "http://localhost:4000",
   "http://localhost:3000",
 ];
