@@ -40,7 +40,7 @@ export function formatDate(dateStr) {
   return `${match[1]}/${match[2]}/${match[3]}`;
 }
 
-export function buildSuggestions(draws, maxNumber, pickCount, recentDrawCount) {
+export function buildSuggestions(draws, maxNumber, pickCount, recentDrawCount, randomFn) {
   const slice = draws.slice(0, recentDrawCount);
   const frequencyMap = new Map();
 
@@ -50,23 +50,41 @@ export function buildSuggestions(draws, maxNumber, pickCount, recentDrawCount) {
     });
   });
 
-  const suggested = Array.from({ length: maxNumber }, (_, index) => index + 1)
-    .map((num) => ({
-      number: num,
-      frequency: frequencyMap.get(num) ?? 0,
-    }))
+  const totalFrequency = Array.from(frequencyMap.values()).reduce((sum, f) => sum + f, 0);
+
+  if (totalFrequency === 0) {
+    const pool = Array.from({ length: maxNumber }, (_, index) => index + 1);
+    const suggested = [];
+    while (suggested.length < pickCount && pool.length > 0) {
+      const randIndex = randomFn(pool.length);
+      suggested.push(pool.splice(randIndex, 1)[0]);
+    }
+    return { baseOn: 0, numbers: suggested.sort((a, b) => a - b) };
+  }
+
+  const frequencyValues = [...frequencyMap.values()];
+  const maxFreq = Math.max(...frequencyValues);
+  const allSameFrequency = frequencyValues.every((f) => f === maxFreq);
+
+  let suggested = Array.from({ length: maxNumber }, (_, index) => index + 1)
+    .map((num) => ({ number: num, frequency: frequencyMap.get(num) ?? 0 }))
     .sort((a, b) => {
       if (b.frequency !== a.frequency) return b.frequency - a.frequency;
-      return a.number - b.number;
+      return randomFn(2) * 2 - 1;
     })
     .slice(0, pickCount)
-    .map((item) => item.number)
-    .sort((a, b) => a - b);
+    .map((item) => item.number);
 
-  return {
-    baseOn: Math.min(slice.length, recentDrawCount),
-    numbers: suggested,
-  };
+  if (allSameFrequency && suggested.length > 1) {
+    for (let i = suggested.length - 1; i > 0; i--) {
+      const j = randomFn(i + 1);
+      [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
+    }
+  } else {
+    suggested = suggested.sort((a, b) => a - b);
+  }
+
+  return { baseOn: Math.min(slice.length, recentDrawCount), numbers: suggested };
 }
 
 function parseDrawFromHeading($, heading, game) {
@@ -194,9 +212,9 @@ export async function fetchGameData(gameKey, cacheStore) {
     latest: cleanDraws[0] ?? null,
     draws: cleanDraws,
     suggestions: {
-      "10": buildSuggestions(cleanDraws, game.maxNumber, game.pickCount, 10),
-      "20": buildSuggestions(cleanDraws, game.maxNumber, game.pickCount, 20),
-      "50": buildSuggestions(cleanDraws, game.maxNumber, game.pickCount, 50),
+      "10": buildSuggestions(cleanDraws, game.maxNumber, game.pickCount, 10, (n) => Math.floor(Math.random() * n)),
+      "20": buildSuggestions(cleanDraws, game.maxNumber, game.pickCount, 20, (n) => Math.floor(Math.random() * n)),
+      "50": buildSuggestions(cleanDraws, game.maxNumber, game.pickCount, 50, (n) => Math.floor(Math.random() * n)),
     },
   };
 
