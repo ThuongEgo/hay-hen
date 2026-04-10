@@ -3,8 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
 const MENU = [
-  { key: "5-35", label: "Vietlott 5/35" },
-  { key: "6-45", label: "Vietlott 6/46 (Mega 6/45)" },
+  { key: "6-45", label: "Vietlott 6/45 (Mega 6/45)" },
   { key: "6-55", label: "Vietlott 6/55 (Power 6/55)" },
   { key: "jackpot", label: "Kỳ có người trúng jackpot" },
   { key: "custom-cage", label: "Quay số tự chọn" },
@@ -75,7 +74,6 @@ function Suggestions({ suggestions, gameType }) {
   const buyStatusTimeoutRef = useRef(null);
   const gameSmsCodeMap = {
     "6-55": "655",
-    "5-35": "335",
     "6-45": "645",
   };
   const gameSmsCode = gameSmsCodeMap[gameType] ?? "645";
@@ -209,8 +207,7 @@ function DrawTable({ draws }) {
 
 function CustomCageDraw() {
   const GAME_OPTIONS = [
-    { key: "5-35", value: "5/35", label: "Tự chọn 5/35 (01-35)", drawCount: 5, maxNumber: 35 },
-    { key: "6-45", value: "6/45", label: "Tự chọn 6/45 (01-45)", drawCount: 6, maxNumber: 45 },
+    { key: "6-45", value: "6/45", label: "Tự chọn Mega 6/45 (01-45)", drawCount: 6, maxNumber: 45 },
     { key: "6-55", value: "6/55", label: "Power 6/55 (01-55)", drawCount: 6, maxNumber: 55 },
   ];
   const [gameType, setGameType] = useState("6-45");
@@ -356,7 +353,6 @@ function CustomCageDraw() {
   const formattedNumbers = completedNumbers.map(formatNum);
   const gameSmsCodeMap = {
     "6-55": "655",
-    "5-35": "335",
     "6-45": "645",
   };
   const gameSmsCode = gameSmsCodeMap[gameType] ?? "645";
@@ -491,7 +487,6 @@ function CustomCageDraw() {
 function App() {
   const [activeMenu, setActiveMenu] = useState("6-45");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [data535, setData535] = useState(null);
   const [data645, setData645] = useState(null);
   const [data655, setData655] = useState(null);
   const [jackpotData, setJackpotData] = useState(null);
@@ -504,25 +499,22 @@ function App() {
         setLoading(true);
         setError("");
 
-        const [res535, res645, res655, resJackpot] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/vietlott/5-35`),
+        const [res645, res655, resJackpot] = await Promise.all([
           fetch(`${API_BASE_URL}/api/vietlott/6-45`),
           fetch(`${API_BASE_URL}/api/vietlott/6-55`),
           fetch(`${API_BASE_URL}/api/vietlott/jackpot-winners`),
         ]);
 
-        if (!res535.ok || !res645.ok || !res655.ok || !resJackpot.ok) {
+        if (!res645.ok || !res655.ok || !resJackpot.ok) {
           throw new Error("Không thể tải dữ liệu từ API.");
         }
 
-        const [json535, json645, json655, jsonJackpot] = await Promise.all([
-          res535.json(),
+        const [json645, json655, jsonJackpot] = await Promise.all([
           res645.json(),
           res655.json(),
           resJackpot.json(),
         ]);
 
-        setData535(json535);
         setData645(json645);
         setData655(json655);
         setJackpotData(jsonJackpot);
@@ -537,11 +529,10 @@ function App() {
   }, []);
 
   const currentData = useMemo(() => {
-    if (activeMenu === "5-35") return data535;
     if (activeMenu === "6-45") return data645;
     if (activeMenu === "6-55") return data655;
     return null;
-  }, [activeMenu, data535, data645, data655]);
+  }, [activeMenu, data645, data655]);
 
   return (
     <div className="layout">
@@ -586,11 +577,9 @@ function App() {
             <LatestResult
               latest={currentData.latest}
               title={
-                activeMenu === "5-35"
-                  ? "Kết quả 5/35 mới nhất"
-                  : activeMenu === "6-45"
-                    ? "Kết quả Mega 6/45 mới nhất"
-                    : "Kết quả Power 6/55 mới nhất"
+                activeMenu === "6-45"
+                  ? "Kết quả Mega 6/45 mới nhất"
+                  : "Kết quả Power 6/55 mới nhất"
               }
             />
             <Suggestions suggestions={currentData.suggestions} gameType={activeMenu} />
@@ -600,7 +589,7 @@ function App() {
 
         {!loading && !error && activeMenu === "jackpot" && jackpotData && (
           <section className="card">
-            <h2>Thống kê các kỳ có người trúng jackpot (5/35 + Mega + Power)</h2>
+            <h2>Thống kê các kỳ có người trúng jackpot (Mega 6/45 + Power 6/55)</h2>
             <p className="sub">Tổng kỳ có người trúng: {jackpotData.total}</p>
             <div className="table-wrap">
               <table>

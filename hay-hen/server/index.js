@@ -5,10 +5,11 @@ import * as cheerio from "cheerio";
 
 const app = express();
 const PORT = 4000;
-const BASE_URL = "https://www.vietlott.vn";
+
+const SOURCE_BASE = "https://www.minhngoc.net.vn";
 
 const allowedOrigins = [
-  "https://www.vietlott.vn",
+  "https://www.minhngoc.net.vn",
   "http://localhost:4000",
   "http://localhost:3000",
 ];
@@ -32,37 +33,28 @@ const cache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 const GAME_CONFIG = {
-  "5-35": {
-    pagePath: "/vi/trung-thuong/ket-qua-trung-thuong/winning-number-535",
-    detailPath: "/vi/trung-thuong/ket-qua-trung-thuong/535",
-    maxNumber: 35,
-    pickCount: 5,
-  },
   "6-45": {
-    pagePath: "/vi/trung-thuong/ket-qua-trung-thuong/winning-number-645",
-    detailPath: "/vi/trung-thuong/ket-qua-trung-thuong/645",
+    pagePath: "/ket-qua-xo-so/dien-toan-vietlott/mega-6x45.html",
     maxNumber: 45,
     pickCount: 6,
   },
   "6-55": {
-    pagePath: "/vi/trung-thuong/ket-qua-trung-thuong/winning-number-655",
-    detailPath: "/vi/trung-thuong/ket-qua-trung-thuong/655",
+    pagePath: "/ket-qua-xo-so/dien-toan-vietlott/power-6x55.html",
     maxNumber: 55,
     pickCount: 6,
   },
 };
 
 const http = axios.create({
-  baseURL: BASE_URL,
+  baseURL: SOURCE_BASE,
   headers: {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    Accept: "application/json, text/plain, */*",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-    Referer: `${BASE_URL}/`,
-    Origin: BASE_URL,
+    Referer: `${SOURCE_BASE}/`,
   },
-  timeout: 15000,
+  timeout: 20000,
 });
 
 function parseIntSafe(value) {
@@ -70,129 +62,11 @@ function parseIntSafe(value) {
   return Number.isNaN(number) ? 0 : number;
 }
 
-function parseListRowsFromPage(html) {
-  const $ = cheerio.load(html);
-  const rows = [];
-  const rowSelector = $("div#divResultContent tbody tr").length
-    ? "div#divResultContent tbody tr"
-    : "tbody tr";
-
-  $(rowSelector).each((_, row) => {
-    const date = $(row).find("td").eq(0).text().trim();
-    const drawCode = $(row).find("td").eq(1).text().trim();
-    const numbers = $(row)
-      .find(".bong_tron")
-      .map((__, el) => parseIntSafe($(el).text()))
-      .get()
-      .filter(Boolean);
-
-    if (date && drawCode && numbers.length >= 5) {
-      rows.push({ date, drawCode, numbers });
-    }
-  });
-
-  return rows;
-}
-
-function parseAjaxConfig(html) {
-  const endpointMatch = html.match(
-    /\/ajaxpro\/Vietlott\.PlugIn\.WebParts\.Game\d+CompareWebPart,Vietlott\.PlugIn\.WebParts\.ashx/
-  );
-  const keyMatch = html.match(/ServerSideDrawResult\(RenderInfo,\s*'([^']+)'/);
-  const maxPageMatch = html.match(/javascript:NextPage\((\d+)\)/g);
-  const maxPageIndex = maxPageMatch
-    ? Math.max(...maxPageMatch.map((item) => parseIntSafe(item)))
-    : 0;
-
-  return {
-    endpoint: endpointMatch?.[0] ?? "",
-    key: keyMatch?.[1] ?? "",
-    maxPageIndex,
-  };
-}
-
-async function createRenderInfo() {
-  const envUrl = "/ajaxpro/Vietlott.Utility.WebEnvironments,Vietlott.Utility.ashx";
-  const response = await http.post(
-    `${BASE_URL}${envUrl}`,
-    { SiteId: "main.frontend.vi" },
-    { headers: { "X-AjaxPro-Method": "ServerSideFrontEndCreateRenderInfo" } }
-  );
-
-  const renderInfo = response.data?.value ?? {};
-  renderInfo.SiteLang = "vi";
-  return renderInfo;
-}
-
-async function fetchListRowsByAjax(ajaxConfig) {
-  if (!ajaxConfig.endpoint || !ajaxConfig.key) return [];
-  const renderInfo = await createRenderInfo();
-  const emptyNumbers = Array.from({ length: 6 }, () => Array.from({ length: 18 }, () => ""));
-  const rows = [];
-
-  for (let pageIndex = 1; pageIndex <= ajaxConfig.maxPageIndex; pageIndex += 1) {
-    const payload = {
-      ORenderInfo: renderInfo,
-      Key: ajaxConfig.key,
-      GameDrawId: "",
-      ArrayNumbers: emptyNumbers,
-      CheckMulti: false,
-      PageIndex: pageIndex,
-    };
-
-    const response = await http.post(`${BASE_URL}${ajaxConfig.endpoint}`, payload, {
-      headers: { "X-AjaxPro-Method": "ServerSideDrawResult" },
-    });
-
-    const htmlFragment = response.data?.value?.HtmlContent ?? "";
-    if (htmlFragment) {
-      rows.push(...parseListRowsFromPage(htmlFragment));
-    }
-  }
-
-  return rows;
-}
-
-function parseDrawOptions(html) {
-  const $ = cheerio.load(html);
-  return $("#drpSelectGameDraw option")
-    .map((_, option) => {
-      const text = $(option).text().trim();
-      const drawCodeMatch = text.match(/\((\d+)\)/);
-      const dateMatch = text.match(/(\d{2}\/\d{2}\/\d{4})/);
-      return {
-        id: $(option).attr("value")?.trim() ?? "",
-        drawCode: drawCodeMatch?.[1] ?? "",
-        date: dateMatch?.[1] ?? "",
-      };
-    })
-    .get()
-    .filter((item) => item.id && item.drawCode);
-}
-
-function parseDetailPage(html) {
-  const $ = cheerio.load(html);
-  const numbers = $(".day_so_ket_qua_v2 .bong_tron, .day_so_ket_qua .bong_tron")
-    .map((_, el) => parseIntSafe($(el).text()))
-    .get()
-    .filter(Boolean);
-
-  const jackpotWinners = [];
-  $("table tr").each((_, tr) => {
-    const cells = $(tr).find("td");
-    if (!cells.length) return;
-
-    const label = cells.eq(0).text().trim().toLowerCase();
-    if (!label.includes("jackpot")) return;
-
-    const winnersCell = cells.eq(Math.max(1, cells.length - 2)).text().trim();
-    jackpotWinners.push(parseIntSafe(winnersCell));
-  });
-
-  return {
-    numbers,
-    jackpotWinners,
-  };
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!match) return dateStr;
+  return `${match[1]}/${match[2]}/${match[3]}`;
 }
 
 function buildSuggestions(draws, maxNumber, pickCount, recentDrawCount) {
@@ -233,55 +107,154 @@ async function fetchGameData(gameKey) {
   const game = GAME_CONFIG[gameKey];
   if (!game) throw new Error("Game không hợp lệ.");
 
-  const mainPage = await http.get(`${BASE_URL}${game.pagePath}`);
-  const html = mainPage.data;
-  const ajaxConfig = parseAjaxConfig(html);
-  const optionList = parseDrawOptions(html);
-  const firstPageRows = parseListRowsFromPage(html);
-  const ajaxRows = await fetchListRowsByAjax(ajaxConfig);
-  const listRows = [...firstPageRows, ...ajaxRows];
-  const uniqueListRows = Array.from(
-    new Map(listRows.map((item) => [item.drawCode, item])).values()
-  );
-  const listMap = new Map(listRows.map((item) => [item.drawCode, item]));
-  const drawCandidates = (uniqueListRows.length ? uniqueListRows : optionList).slice(0, 50);
+  let mainHtml;
+  try {
+    const response = await http.get(game.pagePath);
+    mainHtml = response.data;
+  } catch (err) {
+    throw new Error(`Không thể truy cập minhngoc.net.vn: ${err.message}`);
+  }
 
-  const draws = await Promise.all(drawCandidates.map(async (option) => {
-    const drawCode = option.drawCode;
-    const prefetched = listMap.get(drawCode);
-    let numbers = prefetched?.numbers ?? [];
+  const $ = cheerio.load(mainHtml);
+  const draws = [];
+
+  $("h3, h4, h5").each((_, heading) => {
+    const headingText = $(heading).text().trim();
+    if (!headingText.includes("MEGA 6/45") && !headingText.includes("POWER 6/55")) return;
+
+    let drawCode = "";
+    let dateStr = "";
+
+    const dateMatch = headingText.match(/(\d{2}\/\d{2}\/\d{4})/);
+    if (dateMatch) dateStr = dateMatch[1];
+
+    const kqMatch = headingText.match(/KỲ VÉ[:\s#]*(\d+)/i);
+    if (kqMatch) drawCode = kqMatch[1];
+
+    let numbers = [];
     let jackpotWinners = [];
 
-    try {
-      const detailPage = await http.get(
-        `${BASE_URL}${game.detailPath}?id=${drawCode}&nocatche=1`
-      );
-      const detail = parseDetailPage(detailPage.data);
-      if (detail.numbers.length >= game.pickCount) {
-        numbers = detail.numbers;
-      }
-      jackpotWinners = detail.jackpotWinners;
-    } catch {
-      jackpotWinners = [];
+    const table = $(heading).next("table");
+    if (table.length) {
+      table.find("tr").each((_, row) => {
+        const cells = $(row).find("td");
+        if (cells.length < 2) return;
+        const label = cells.eq(0).text().trim().toLowerCase();
+
+        if (label.includes("jackpot")) {
+          const winners =
+            cells.length >= 3
+              ? parseIntSafe(cells.eq(cells.length - 2).text())
+              : parseIntSafe(cells.last().text());
+          if (winners > 0) jackpotWinners.push(winners);
+          return;
+        }
+
+        const numStr = cells.last().text().trim();
+        const nums = numStr
+          .replace(/[^0-9\s]/g, " ")
+          .split(/\s+/)
+          .map((s) => parseIntSafe(s))
+          .filter(Boolean);
+
+        if (nums.length >= 5) {
+          const seen = new Set(numbers);
+          for (const n of nums) {
+            if (!seen.has(n)) {
+              seen.add(n);
+              numbers.push(n);
+            }
+          }
+        }
+      });
     }
 
-    if (numbers.length >= game.pickCount) {
-      return {
+    if (numbers.length >= game.pickCount && drawCode) {
+      draws.push({
         drawCode,
-        date: option.date || prefetched?.date || "",
-        numbers,
+        date: formatDate(dateStr),
+        numbers: numbers.slice(0, game.pickCount),
         jackpotWinners,
-        hasJackpotWinner: jackpotWinners.some((item) => item > 0),
-      };
+        hasJackpotWinner: jackpotWinners.some((w) => w > 0),
+      });
     }
-    return null;
-  }));
+  });
 
-  const cleanDraws = draws.filter(Boolean);
+  if (draws.length === 0) {
+    $("h3, h4").each((_, heading) => {
+      const headingText = $(heading).text().trim();
+      if (!headingText.includes("KẾT QUẢ")) return;
+
+      const dateMatch = headingText.match(/(\d{2}\/\d{2}\/\d{4})/);
+      if (!dateMatch) return;
+
+      let drawCode = "";
+      const kqMatch = headingText.match(/KỲ VÉ[:\s#]*(\d+)/i);
+      if (kqMatch) drawCode = kqMatch[1];
+
+      let numbers = [];
+      let jackpotWinners = [];
+
+      const table = $(heading).next("table");
+      if (table.length) {
+        table.find("tr").each((_, row) => {
+          const cells = $(row).find("td");
+          if (cells.length < 2) return;
+          const label = cells.eq(0).text().trim().toLowerCase();
+
+          if (label.includes("jackpot")) {
+            const winners =
+              cells.length >= 3
+                ? parseIntSafe(cells.eq(cells.length - 2).text())
+                : parseIntSafe(cells.last().text());
+            if (winners > 0) jackpotWinners.push(winners);
+            return;
+          }
+
+          const numStr = cells.last().text().trim();
+          const nums = numStr
+            .replace(/[^0-9\s]/g, " ")
+            .split(/\s+/)
+            .map((s) => parseIntSafe(s))
+            .filter(Boolean);
+
+          if (nums.length >= 5) {
+            const seen = new Set(numbers);
+            for (const n of nums) {
+              if (!seen.has(n)) {
+                seen.add(n);
+                numbers.push(n);
+              }
+            }
+          }
+        });
+      }
+
+      if (numbers.length >= game.pickCount && drawCode) {
+        draws.push({
+          drawCode,
+          date: formatDate(dateMatch[1]),
+          numbers: numbers.slice(0, game.pickCount),
+          jackpotWinners,
+          hasJackpotWinner: jackpotWinners.some((w) => w > 0),
+        });
+      }
+    });
+  }
+
+  const uniqueMap = new Map();
+  draws.forEach((d) => {
+    if (!uniqueMap.has(d.drawCode)) {
+      uniqueMap.set(d.drawCode, d);
+    }
+  });
+  const cleanDraws = Array.from(uniqueMap.values()).sort(
+    (a, b) => Number(b.drawCode) - Number(a.drawCode)
+  );
 
   const data = {
     game: gameKey,
-    sourceBaseUrl: BASE_URL,
+    sourceBaseUrl: SOURCE_BASE,
     fetchedAt: new Date().toISOString(),
     latest: cleanDraws[0] ?? null,
     draws: cleanDraws,
@@ -302,14 +275,12 @@ app.get(`/api/health`, (_, res) => {
 
 app.get(`/api/vietlott/jackpot-winners`, async (_, res) => {
   try {
-    const [game535, game645, game655] = await Promise.all([
-      fetchGameData("5-35"),
+    const [game645, game655] = await Promise.all([
       fetchGameData("6-45"),
       fetchGameData("6-55"),
     ]);
 
     const jackpotDraws = [
-      ...game535.draws.map((draw) => ({ ...draw, game: "5-35" })),
       ...game645.draws.map((draw) => ({ ...draw, game: "6-45" })),
       ...game655.draws.map((draw) => ({ ...draw, game: "6-55" })),
     ]
@@ -317,7 +288,7 @@ app.get(`/api/vietlott/jackpot-winners`, async (_, res) => {
       .sort((a, b) => Number(b.drawCode) - Number(a.drawCode));
 
     res.json({
-      sourceBaseUrl: BASE_URL,
+      sourceBaseUrl: SOURCE_BASE,
       fetchedAt: new Date().toISOString(),
       total: jackpotDraws.length,
       draws: jackpotDraws,
@@ -347,5 +318,6 @@ export default app;
 if (globalThis.process?.env?.NODE_ENV !== "production") {
   app.listen(PORT, () => {
     console.log(`Server API đang chạy tại http://localhost:${PORT}`);
+    console.log(`Nguồn dữ liệu: ${SOURCE_BASE}`);
   });
 }
